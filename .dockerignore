@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+
+
+# Virtual Environment
+venv/
+ENV/
+
+# Docker
+.dockerignore
+
+# Testing
+.pytest_cache/
+
+# Database
+*.db
+*.sqlite3 
