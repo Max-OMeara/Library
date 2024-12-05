@@ -8,6 +8,7 @@ class User:
   password: string
   personal_library = [] # list of JSON blobs/python dictionary
   favorite_books = [] # list of JSON blobs/python dictionaries
+  reviews = [] # list of JSON blobs/python dictionaries
 #end class
 
 def create_user_account(username: str, password: str):
