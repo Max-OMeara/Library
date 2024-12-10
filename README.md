@@ -332,3 +332,55 @@
         "message": "Book with ID 123 not found in your library"
     }
     ```
+
+### Update Status
+
+**Route:** `/api/update-status/<book_id>`
+- **Method:** PUT
+- **Purpose:** Updates the reading status of a specific book in the user's library.
+- **URL Parameters:**
+  - `book_id` (required): The ID of the book to update
+- **Response Format:** JSON
+- **Success Response:**
+  - **Code:** 200
+  - **Content:**
+
+    ```json
+     {
+      "message": "The status of 'The Great Gatsby' has been updated to 'Reading'.",
+      "book": {
+          "id": 1,
+          "title": "The Great Gatsby",
+          "author": "F. Scott Fitzgerald",
+          "isbn": "9780743273565",
+          "status": "Reading"
+    }
+
+
+    ```
+
+- **Error Responses:**
+  - **Code:** 400
+
+    ```json
+    {
+    "message": "Invalid reading status provided 'Reaad'"
+    }
+
+    ```
+
+  - **Code:** 404
+
+    ```json
+    {
+        "message": "Book with ID -1000 not found in your library"
+    }
+    ```
+
+  - **Code:** 500
+
+    ```json
+    {
+        "message": "Error updating book status"
+    }
+    ```
