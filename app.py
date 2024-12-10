@@ -1,5 +1,10 @@
 from flask import Flask, jsonify, request
-from models.user_model import User, get_library, add_book_personal_library
+from models.user_model import (
+    User,
+    get_library,
+    add_book_personal_library,
+    delete_book_from_library,
+)
 
 app = Flask(__name__)
 
@@ -129,6 +134,20 @@ def add_review():
     book_data = {k: v for k, v in data.items() if k != "username"}
 
     return add_review(user, book_data)
+
+
+@app.route("/api/delete-book/<int:book_id>", methods=["DELETE"])
+def delete_book(book_id):
+    """Delete a book from the user's library"""
+    username = request.args.get("username")
+    if not username:
+        return jsonify({"message": "Please provide a username"}), 400
+
+    user = User.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return delete_book_from_library(user, book_id)
 
 
 if __name__ == "__main__":

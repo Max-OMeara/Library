@@ -320,7 +320,7 @@ def add_review(user, review, book_id):
 
     if not review:
         return jsonify({"message": "Please provide a review"}), 400
-    
+
     # Find the book in personal library
     book_to_review = None
     for book in user.personal_library:
@@ -337,15 +337,17 @@ def add_review(user, review, book_id):
             ),
             404,
         )
-    
+
     # Check if user has already reviewed the book
     for review in user.reviews:
         if review.id == book_id:
             return (
-                jsonify({"message": f"You have already reviewed '{book_to_review.title}'"}),
+                jsonify(
+                    {"message": f"You have already reviewed '{book_to_review.title}'"}
+                ),
                 400,
             )
-    
+
     # Add review
     user.reviews.append(review)
 
@@ -367,11 +369,14 @@ def get_reviews(user):
     tuple: (jsonified response, status_code)
     """
 
+<<<<<<< HEAD
     if not user.reviews:
         return jsonify({"message": "You have not reviewed any books yet"}), 404
 
     return jsonify({"reviews": [review for review in user.reviews]}), 200
 
+=======
+>>>>>>> 3f44250 (feat: created delete book route)
 def delete_review(user, book_id):
     """Deleting a user's review of a given book
     Arguments:
@@ -408,7 +413,9 @@ def delete_review(user, book_id):
         if review.id == book_id:
             user.reviews.remove(review)
             return (
-                jsonify({"message": f"Review for '{book_to_delete.title}' has been deleted"}),
+                jsonify(
+                    {"message": f"Review for '{book_to_delete.title}' has been deleted"}
+                ),
                 200,
             )
 
@@ -417,3 +424,34 @@ def delete_review(user, book_id):
         400,
     )
 
+
+def delete_book_from_library(user, book_id: int):
+    """Delete a book from the user's personal library
+    Arguments:
+    user: class User
+    book_id: int, ID of the book to delete
+    Returns:
+    tuple: (jsonified response, status_code)
+    """
+    # Find the book in personal library
+    book_to_delete = None
+    for book in user.personal_library:
+        if book.id == book_id:
+            book_to_delete = book
+            break
+
+    if not book_to_delete:
+        return (
+            jsonify({"message": f"Book with ID {book_id} not found in your library"}),
+            404,
+        )
+
+    # Remove the book
+    user.personal_library.remove(book_to_delete)
+
+    return (
+        jsonify(
+            {"message": f"'{book_to_delete.title}' has been removed from your library"}
+        ),
+        200,
+    )
