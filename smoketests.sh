@@ -16,8 +16,33 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-# Test if the server responds
-RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health-check")
+# Function to check if response is valid JSON
+check_json() {
+  echo "$1" | jq empty &>/dev/null
+  if [ $? -ne 0 ]; then
+    echo "Invalid JSON response: $1"
+    exit 1
+  fi
+}
+
+# Function to handle requests and check HTTP status code
+make_request() {
+  local RESPONSE=$(curl -s -w "\n%{http_code}" "$1" -X "$2" -H "Content-Type: application/json" -d "$3")
+  local HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+  local BODY=$(echo "$RESPONSE" | head -n-1)
+
+  if [ "$HTTP_CODE" -ne "$4" ]; then
+    echo "Request to $1 failed with code $HTTP_CODE"
+    echo "Response: $BODY"
+    exit 1
+  fi
+
+  echo "$BODY"
+}
+
+# Test health-check
+HEALTH_ENDPOINT="$BASE_URL/health"
+RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_ENDPOINT")
 if [ "$RESPONSE" -eq 200 ]; then
   echo "Health-check endpoint is up."
 else
@@ -26,90 +51,57 @@ else
 fi
 
 # Test create-account
-CREATE_RESPONSE=$(curl -s -X POST "$BASE_URL/create-account" \
-  -H "Content-Type: application/json" \
-  -d '{ "username": "testuser", "password": "testpass" }' \
-  -w "%{http_code}")
-if [ "$CREATE_RESPONSE" -eq 201 ]; then
-  echo "Account creation test passed."
-else
-  echo "Account creation test failed with code $CREATE_RESPONSE"
-  exit 1
-fi
+CREATE_ACCOUNT_ENDPOINT="$BASE_URL/create-account"
+CREATE_PAYLOAD='{ "username": "testuser", "password": "testpass" }'
+CREATE_RESPONSE=$(make_request "$CREATE_ACCOUNT_ENDPOINT" "POST" "$CREATE_PAYLOAD" 201)
+check_json "$CREATE_RESPONSE"
+echo "Account creation test passed."
 
-# Test get-my-library (should be empty initially)
-LIB_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/get-my-library")
-if [ "$LIB_RESPONSE" -eq 200 ]; then
-  echo "Get-my-library test passed."
-else
-  echo "Get-my-library test failed with code $LIB_RESPONSE"
-  exit 1
-fi
-
-# Test login
-LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/login" \
-  -H "Content-Type: application/json" \
-  -d '{ "username": "testuser", "password": "testpass" }' \
-  -w "%{http_code}")
-
-if [ "$LOGIN_RESPONSE" -eq 200 ]; then
-  echo "Login test passed."
-else
-  echo "Login test failed with code $LOGIN_RESPONSE"
-  exit 1
-fi
-
-# Test add-to-library
-ADD_RESPONSE=$(curl -s -X POST "$BASE_URL/add-to-library" \
-  -H "Content-Type: application/json" \
-  -d '{ "title": "testtitle", "author": "testauthor" }' \
-  -w "%{http_code}")
-
-if [ "$ADD_RESPONSE" -eq 201 ]; then
-  echo "Add-to-library test passed."
-else
-  echo "Add-to-library test failed with code $ADD_RESPONSE"
-  exit 1
-fi
-
-# Test get-my-library (should have one book)
-LIB_RESPONSE=$(curl -s "$BASE_URL/get-my-library")
-if [ "$ECHO_JSON" = true ]; then
-  echo "Get-my-library response: $LIB_RESPONSE"
-fi
-
-if [ "$(echo "$LIB_RESPONSE" | jq '. | length')" -eq 1 ]; then
-  echo "Get-my-library test passed."
-else
-  echo "Get-my-library test failed."
-  exit 1
-fi
-
-# Test remove-from-library
-REMOVE_RESPONSE=$(curl -s -X POST "$BASE_URL/remove-from-library" \
-  -H "Content-Type: application/json" \
-  -d '{ "title": "testtitle", "author": "testauthor" }' \
-  -w "%{http_code}")
-
-if [ "$REMOVE_RESPONSE" -eq 200 ]; then
-  echo "Remove-from-library test passed."
-else
-  echo "Remove-from-library test failed with code $REMOVE_RESPONSE"
-  exit 1
-fi
-
-# Test get-my-library (should be empty again)
-LIB_RESPONSE=$(curl -s "$BASE_URL/get-my-library")
-if [ "$ECHO_JSON" = true ]; then
-  echo "Get-my-library response: $LIB_RESPONSE"
-fi
+# Test get-library (should be empty initially)
+GET_LIBRARY_ENDPOINT="$BASE_URL/get-library?username=testuser"
+LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
+check_json "$LIB_RESPONSE"
 
 if [ "$(echo "$LIB_RESPONSE" | jq '. | length')" -eq 0 ]; then
-  echo "Get-my-library test passed."
+  echo "Get-library test passed."
 else
-  echo "Get-my-library test failed."
+  echo "Get-library test failed. Response: $LIB_RESPONSE"
   exit 1
 fi
 
+# Test add-book
+ADD_BOOK_ENDPOINT="$BASE_URL/add-book"
+ADD_BOOK_PAYLOAD='{ "username": "testuser", "title": "testtitle", "author": "testauthor" }'
+ADD_BOOK_RESPONSE=$(make_request "$ADD_BOOK_ENDPOINT" "POST" "$ADD_BOOK_PAYLOAD" 201)
+check_json "$ADD_BOOK_RESPONSE"
+echo "Add-book test passed."
+
+# Test get-library (should have one book)
+LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
+check_json "$LIB_RESPONSE"
+
+if [ "$(echo "$LIB_RESPONSE" | jq '. | length')" -eq 1 ]; then
+  echo "Get-library test passed."
+else
+  echo "Get-library test failed. Response: $LIB_RESPONSE"
+  exit 1
+fi
+
+# Test delete-book
+DELETE_BOOK_ENDPOINT="$BASE_URL/delete-book/1?username=testuser"
+DELETE_RESPONSE=$(make_request "$DELETE_BOOK_ENDPOINT" "DELETE" "" 200)
+check_json "$DELETE_RESPONSE"
+echo "Delete-book test passed."
+
+# Test get-library (should be empty again)
+LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
+check_json "$LIB_RESPONSE"
+
+if [ "$(echo "$LIB_RESPONSE" | jq '. | length')" -eq 0 ]; then
+  echo "Get-library test passed."
+else
+  echo "Get-library test failed. Response: $LIB_RESPONSE"
+  exit 1
+fi
 
 echo "All smoke tests passed."
