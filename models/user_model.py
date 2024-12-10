@@ -361,7 +361,7 @@ def add_book_review(user, review_text: str, book_id: int):
                 jsonify(
                     {"message": f"You have already reviewed '{book_to_review.title}'"}
                 ),
-                400,
+                402,
             )
 
     # Create a new review

@@ -413,3 +413,49 @@
         "message": "You have not reviewed any books yet"
     }
     ```
+
+  ### Add Review
+
+**Route:** `/api/add-review`
+
+- **Method:** POST
+- **Purpose:** Route to add a review to a book
+- **Query Parameters:**
+  - `username` (required): The username of the library owner
+  - 'message' (required): Message of the review
+  - 'book_id' (required): Book ID to assign the review to
+  - **Response Format:** JSON
+- **Success Response:**
+  - **Code:** 200
+  - **Content:**
+
+    ```json
+    {
+      "message": "Review added for '{book_to_review.title}'",
+      "review": "Custom Message"
+    }
+    ```
+- **Error Responses:**
+  - **Code:** 400
+
+    ```json
+    {
+        "message": "Please provide a review"
+    }
+    ```
+
+ - **Code:** 404
+
+  ```json
+  {
+      "message": "Book with ID not found"
+  }
+  ```
+
+   - **Code:** 402
+
+  ```json
+  {
+      "message": "You have already reviewed this book"
+  }
+  ```
