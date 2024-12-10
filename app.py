@@ -14,6 +14,9 @@ def home():
     return {"message": "Library API is running"}
 
 
+# Authentication Routes
+
+
 @app.route("/create-account", methods=["POST"])
 def create_account():
     """Create a new user account with salted password hash"""
@@ -73,6 +76,9 @@ def update_password():
     return user.update_password(data["new_password"])
 
 
+# Library Routes
+
+
 @app.route("/api/get-library", methods=["GET"])
 def get_user_library():
     """Get the user's library with books organized by status"""
@@ -106,6 +112,7 @@ def add_book():
     book_data = {k: v for k, v in data.items() if k != "username"}
     return add_book_personal_library(user, book_data)
 
+
 @app.route("/api/add-review", methods=["POST"])
 def add_review():
     """
@@ -120,17 +127,17 @@ def add_review():
     data = request.get_json()
     if not data.get("username"):
         return jsonify({"message": "Please provide a username"}), 400
-    
+
     if not data.get("title"):
         return jsonify({"message": "Please provide a book title"}), 400
-    
+
     if not data.get("review"):
         return jsonify({"message": "Please provide a review"}), 400
-    
+
     user = User.get_user_by_username(data["username"])
     if not user:
         return jsonify({"message": "User not found"}), 404
-    
+
     book_data = {k: v for k, v in data.items() if k != "username"}
 
     return add_review(user, book_data)
