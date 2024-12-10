@@ -369,14 +369,11 @@ def get_reviews(user):
     tuple: (jsonified response, status_code)
     """
 
-<<<<<<< HEAD
     if not user.reviews:
         return jsonify({"message": "You have not reviewed any books yet"}), 404
 
     return jsonify({"reviews": [review for review in user.reviews]}), 200
 
-=======
->>>>>>> 3f44250 (feat: created delete book route)
 def delete_review(user, book_id):
     """Deleting a user's review of a given book
     Arguments:
