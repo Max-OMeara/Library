@@ -163,6 +163,32 @@ def get_reviews():
 
     return get_reviews(user)
 
+@app.route("/api/delete-review", methods=["DELETE"])
+def delete_review(user, book_id):
+    """
+    Route to delete a review from a user.
+
+    Returns:
+        JSON response indicating the review has been deleted.
+    Raises:
+        404 error if there is an issue with the database.
+    """
+    app.logger.info("Deleting review")
+    data = request.get_json()
+    if not data.get("username"):
+        return jsonify({"message": "Please provide a username"}), 400
+
+    if not data.get("title"):
+        return jsonify({"message": "Please provide a book title"}), 400
+
+    user = User.get_user_by_username(data["username"])
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    book_data = {k: v for k, v in data.items() if k != "username"}
+
+    return delete_review(user, book_id)
+
 @app.route("/api/delete-book/<int:book_id>", methods=["DELETE"])
 def delete_book(book_id):
     """Delete a book from the user's library"""
