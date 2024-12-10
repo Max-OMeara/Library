@@ -452,3 +452,59 @@ def delete_book_from_library(user, book_id: int):
         ),
         200,
     )
+def update_status(user, book_id, new_status):
+    """Updating a user's status on a particular book given a book id
+    Arguments:
+    user: class User
+    book_id: int, ID of the book who's status will be updated
+    new_status: string, new status to be updated
+    
+    Returns:
+    tuple: (jsonified response, status_code)
+        - 200: If the status is successfully updated.
+
+    Raises:
+    tuple: (jsonified response, status_code)
+        - 400: If `new_status` is invalid.
+        - 404: If the book with given `book_id` is not found in the user's library.
+        - 500: If there's a database error
+
+    """
+
+    # Checking for valid status
+    if new_status not in ['Want to Read', 'Reading', 'Read']:
+        return jsonify({"message": f"Invalid reading status provided {new_status}"}),400
+    
+    book_to_update = None
+    # finding book
+    for book in user.personal_library:
+        if book.id == book_id:
+            book_to_update = book
+            break
+    #endfor
+
+    if not book_to_update:
+        return jsonify({"message": f"Book with ID {book_id} not found in your library"}), 404
+    
+    book_to_update.status = new_status
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE books
+                SET status = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (new_status, book_id, user.id),
+            )
+            conn.commit()
+
+        return jsonify({
+            "message": f"Status of '{book_to_update.title}' has been updated to '{new_status}'",
+            "book": book_to_update.to_dict(),
+        }), 200
+
+    except sqlite3.Error as e:
+        logger.error("Database error while updating book status: %s", str(e))
+        return jsonify({"message": "Error updating book status"}), 500
