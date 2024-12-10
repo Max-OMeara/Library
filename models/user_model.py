@@ -308,12 +308,57 @@ def add_book_favorite_books(user, book_id: int):
     )
 
 
-def add_review(user, review, book):
+def add_review(user, review, book_id):
     """Adding a user's review of a particular book
     Arguments:
     user: class User
     review: string, review to be added
-    book: string???"""
+    book_id: int, ID of the book to review
+    Returns:
+    tuple: (jsonified response, status_code)
+    """
+
+    if not review:
+        return jsonify({"message": "Please provide a review"}), 400
+    
+    # Find the book in personal library
+    book_to_review = None
+    for book in user.personal_library:
+        if book.id == book_id:
+            book_to_review = book
+            break
+
+    if not book_to_review:
+        return (
+            jsonify(
+                {
+                    "message": f"Book with ID {book_id} not found in your personal library"
+                }
+            ),
+            404,
+        )
+    
+    # Check if user has already reviewed the book
+    for review in user.reviews:
+        if review.id == book_id:
+            return (
+                jsonify({"message": f"You have already reviewed '{book_to_review.title}'"}),
+                400,
+            )
+    
+    # Add review
+    user.reviews.append(review)
+
+    return (
+        jsonify(
+            {
+                "message": f"Review added for '{book_to_review.title}'",
+                "review": review,
+            }
+        ),
+        200,
+    )
+
 
 
 def delete_review(user, book):
@@ -323,3 +368,4 @@ def delete_review(user, book):
     book: string????
     Raises:
     ??? ValueError"""
+
