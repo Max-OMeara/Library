@@ -361,11 +361,48 @@ def add_review(user, review, book_id):
 
 
 
-def delete_review(user, book):
+def delete_review(user, book_id):
     """Deleting a user's review of a given book
     Arguments:
     user: class User
-    book: string????
+    book_id: int, ID of the book to delete review
+    Returns:
+    tuple: (jsonified response, status_code)
     Raises:
-    ??? ValueError"""
+    ValueError: If book is not provided
+    """
+
+    if not book:
+        return jsonify({"message": "Please provide a book to delete"}), 400
+
+    # Find the book in personal library
+    book_to_delete = None
+    for book in user.personal_library:
+        if book.id == book_id:
+            book_to_delete = book
+            break
+
+    if not book_to_delete:
+        return (
+            jsonify(
+                {
+                    "message": f"Book with ID {book_id} not found in your personal library"
+                }
+            ),
+            404,
+        )
+
+    # Check if user has reviewed the book
+    for review in user.reviews:
+        if review.id == book_id:
+            user.reviews.remove(review)
+            return (
+                jsonify({"message": f"Review for '{book_to_delete.title}' has been deleted"}),
+                200,
+            )
+
+    return (
+        jsonify({"message": f"You have not reviewed '{book_to_delete.title}'"}),
+        400,
+    )
 
