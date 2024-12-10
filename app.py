@@ -4,6 +4,7 @@ from models.user_model import (
     get_library,
     add_book_personal_library,
     delete_book_from_library,
+    update_status,
 )
 
 app = Flask(__name__)
@@ -142,6 +143,7 @@ def add_review():
 
     return add_review(user, book_data)
 
+
 @app.route("/api/get-reviews", methods=["GET"])
 def get_reviews():
     """
@@ -162,6 +164,7 @@ def get_reviews():
         return jsonify({"message": "User not found"}), 404
 
     return get_reviews(user)
+
 
 @app.route("/api/delete-review", methods=["DELETE"])
 def delete_review(user, book_id):
@@ -189,6 +192,7 @@ def delete_review(user, book_id):
 
     return delete_review(user, book_id)
 
+
 @app.route("/api/delete-book/<int:book_id>", methods=["DELETE"])
 def delete_book(book_id):
     """Delete a book from the user's library"""
@@ -201,6 +205,32 @@ def delete_book(book_id):
         return jsonify({"message": "User not found"}), 404
 
     return delete_book_from_library(user, book_id)
+
+
+@app.route("/api/update-status/<int:book_id>", methods=["PUT"])
+def update_book_status(book_id):
+    """Update a book's reading status"""
+    data = request.get_json()
+    username = data.get("username")
+    new_status = data.get("status")
+
+    if not username:
+        return jsonify({"message": "Please provide a username"}), 400
+
+    if not new_status:
+        return jsonify({"message": "Please provide a new status"}), 400
+
+    if new_status not in ["Want to Read", "Reading", "Read"]:
+        return (
+            jsonify({"message": "Status must be: Want to Read, Reading, or Read"}),
+            400,
+        )
+
+    user = User.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return update_status(user, book_id, new_status)
 
 
 if __name__ == "__main__":

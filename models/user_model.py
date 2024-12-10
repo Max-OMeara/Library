@@ -10,7 +10,7 @@ from models.book_model import Book
 from utils.openlibrary import session
 
 logger = logging.getLogger(__name__)
-configure_logger(logger)
+# configure_logger(logger)
 DB_PATH = "/app/db/library.db"
 
 
@@ -362,6 +362,7 @@ def add_review(user, review, book_id):
         200,
     )
 
+
 def get_reviews(user):
     """Get all reviews of books by the user
     Arguments:
@@ -374,6 +375,7 @@ def get_reviews(user):
         return jsonify({"message": "You have not reviewed any books yet"}), 404
 
     return jsonify({"reviews": [review for review in user.reviews]}), 200
+
 
 def delete_review(user, book_id):
     """Deleting a user's review of a given book
@@ -453,13 +455,15 @@ def delete_book_from_library(user, book_id: int):
         ),
         200,
     )
-def update_status(user, book_id, new_status):
+
+
+def update_status(user, book_id: int, new_status: str):
     """Updating a user's status on a particular book given a book id
     Arguments:
     user: class User
     book_id: int, ID of the book who's status will be updated
     new_status: string, new status to be updated
-    
+
     Returns:
     tuple: (jsonified response, status_code)
         - 200: If the status is successfully updated.
@@ -473,38 +477,49 @@ def update_status(user, book_id, new_status):
     """
 
     # Checking for valid status
-    if new_status not in ['Want to Read', 'Reading', 'Read']:
-        return jsonify({"message": f"Invalid reading status provided {new_status}"}),400
-    
+    if new_status not in ["Want to Read", "Reading", "Read"]:
+        return (
+            jsonify({"message": f"Invalid reading status provided {new_status}"}),
+            400,
+        )
+
     book_to_update = None
     # finding book
     for book in user.personal_library:
         if book.id == book_id:
             book_to_update = book
             break
-    #endfor
+    # endfor
 
     if not book_to_update:
-        return jsonify({"message": f"Book with ID {book_id} not found in your library"}), 404
-    
+        return (
+            jsonify({"message": f"Book with ID {book_id} not found in your library"}),
+            404,
+        )
+
     book_to_update.status = new_status
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                UPDATE books
+                UPDATE user_books
                 SET status = ?
-                WHERE id = ? AND user_id = ?
+                WHERE user_id = ? AND book_id = ?
                 """,
-                (new_status, book_id, user.id),
+                (new_status, user.id, book_id),
             )
             conn.commit()
 
-        return jsonify({
-            "message": f"Status of '{book_to_update.title}' has been updated to '{new_status}'",
-            "book": book_to_update.to_dict(),
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": f"Status of '{book_to_update.title}' has been updated to '{new_status}'",
+                    "book": book_to_update.to_dict(),
+                }
+            ),
+            200,
+        )
 
     except sqlite3.Error as e:
         logger.error("Database error while updating book status: %s", str(e))
