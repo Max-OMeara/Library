@@ -135,6 +135,26 @@ def add_review():
 
     return add_review(user, book_data)
 
+@app.route("/api/get-reviews", methods=["GET"])
+def get_reviews():
+    """
+    Route to get reviews all reviews by a user.
+
+    Returns:
+        JSON response with reviews from a user.
+    Raises:
+        404 error if there is an issue with the database.
+    """
+    app.logger.info("Getting reviews")
+    username = request.args.get("username")
+    if not username:
+        return jsonify({"message": "Please provide a username"}), 400
+
+    user = User.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return get_reviews(user)
 
 @app.route("/api/delete-book/<int:book_id>", methods=["DELETE"])
 def delete_book(book_id):
