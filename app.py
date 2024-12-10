@@ -101,6 +101,35 @@ def add_book():
     book_data = {k: v for k, v in data.items() if k != "username"}
     return add_book_personal_library(user, book_data)
 
+@app.route("/api/add-review", methods=["POST"])
+def add_review():
+    """
+    Route to add a review to a book.
+
+    Returns:
+        JSON response indicating the review has been added.
+    Raises:
+        404 error if there is an issue with the database.
+    """
+    app.logger.info("Adding review")
+    data = request.get_json()
+    if not data.get("username"):
+        return jsonify({"message": "Please provide a username"}), 400
+    
+    if not data.get("title"):
+        return jsonify({"message": "Please provide a book title"}), 400
+    
+    if not data.get("review"):
+        return jsonify({"message": "Please provide a review"}), 400
+    
+    user = User.get_user_by_username(data["username"])
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    
+    book_data = {k: v for k, v in data.items() if k != "username"}
+
+    return add_review(user, book_data)
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
