@@ -5,6 +5,9 @@ from models.user_model import (
     add_book_personal_library,
     delete_book_from_library,
     update_status,
+    add_book_review,
+    delete_review,
+    get_reviews,
 )
 
 app = Flask(__name__)
@@ -135,17 +138,21 @@ def add_review():
     if not data.get("review"):
         return jsonify({"message": "Please provide a review"}), 400
 
+    if not data.get("book_id"):
+        return jsonify({"message": "Please provide a book ID"}), 400
+
     user = User.get_user_by_username(data["username"])
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    book_data = {k: v for k, v in data.items() if k != "username"}
+    book_id = data["book_id"]
+    review = data["review"]
 
-    return add_review(user, book_data)
+    return add_book_review(user, review, book_id)
 
 
 @app.route("/api/get-reviews", methods=["GET"])
-def get_reviews():
+def get_user_reviews():
     """
     Route to get reviews all reviews by a user.
 
@@ -167,7 +174,7 @@ def get_reviews():
 
 
 @app.route("/api/delete-review", methods=["DELETE"])
-def delete_review(user, book_id):
+def delete_user_review():
     """
     Route to delete a review from a user.
 
@@ -181,14 +188,14 @@ def delete_review(user, book_id):
     if not data.get("username"):
         return jsonify({"message": "Please provide a username"}), 400
 
-    if not data.get("title"):
-        return jsonify({"message": "Please provide a book title"}), 400
+    if not data.get("book_id"):
+        return jsonify({"message": "Please provide a book ID"}), 400
 
     user = User.get_user_by_username(data["username"])
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    book_data = {k: v for k, v in data.items() if k != "username"}
+    book_id = data["book_id"]
 
     return delete_review(user, book_id)
 

@@ -15,6 +15,20 @@ configure_logger(logger)
 DB_PATH = "/app/db/library.db"
 
 
+class Review:
+    def __init__(self, book_id: int, book_title: str, review_text: str):
+        self.book_id = book_id
+        self.book_title = book_title
+        self.review_text = review_text
+
+    def to_dict(self):
+        return {
+            "book_id": self.book_id,
+            "book_title": self.book_title,
+            "review_text": self.review_text,
+        }
+
+
 class User:
     id: int
     username: str
@@ -310,17 +324,17 @@ def add_book_favorite_books(user, book_id: int):
     )
 
 
-def add_review(user, review, book_id):
+def add_book_review(user, review_text: str, book_id: int):
     """Adding a user's review of a particular book
     Arguments:
     user: class User
-    review: string, review to be added
+    review_text: string, review to be added
     book_id: int, ID of the book to review
     Returns:
     tuple: (jsonified response, status_code)
     """
 
-    if not review:
+    if not review_text:
         return jsonify({"message": "Please provide a review"}), 400
 
     # Find the book in personal library
@@ -342,7 +356,7 @@ def add_review(user, review, book_id):
 
     # Check if user has already reviewed the book
     for review in user.reviews:
-        if review.id == book_id:
+        if review.book_id == book_id:
             return (
                 jsonify(
                     {"message": f"You have already reviewed '{book_to_review.title}'"}
@@ -350,14 +364,19 @@ def add_review(user, review, book_id):
                 400,
             )
 
+    # Create a new review
+    new_review = Review(
+        book_id=book_id, book_title=book_to_review.title, review_text=review_text
+    )
+
     # Add review
-    user.reviews.append(review)
+    user.reviews.append(new_review)
 
     return (
         jsonify(
             {
                 "message": f"Review added for '{book_to_review.title}'",
-                "review": review,
+                "review": new_review.to_dict(),
             }
         ),
         200,
@@ -375,10 +394,10 @@ def get_reviews(user):
     if not user.reviews:
         return jsonify({"message": "You have not reviewed any books yet"}), 404
 
-    return jsonify({"reviews": [review for review in user.reviews]}), 200
+    return jsonify({"reviews": [review.to_dict() for review in user.reviews]}), 200
 
 
-def delete_review(user, book_id):
+def delete_review(user, book_id: int):
     """Deleting a user's review of a given book
     Arguments:
     user: class User
@@ -389,7 +408,7 @@ def delete_review(user, book_id):
     ValueError: If book is not provided
     """
 
-    if not book:
+    if not book_id:
         return jsonify({"message": "Please provide a book to delete"}), 400
 
     # Find the book in personal library
@@ -410,15 +429,20 @@ def delete_review(user, book_id):
         )
 
     # Check if user has reviewed the book
+    review_to_delete = None
     for review in user.reviews:
-        if review.id == book_id:
-            user.reviews.remove(review)
-            return (
-                jsonify(
-                    {"message": f"Review for '{book_to_delete.title}' has been deleted"}
-                ),
-                200,
-            )
+        if review.book_id == book_id:
+            review_to_delete = review
+            break
+
+    if review_to_delete:
+        user.reviews.remove(review_to_delete)
+        return (
+            jsonify(
+                {"message": f"Review for '{book_to_delete.title}' has been deleted"}
+            ),
+            200,
+        )
 
     return (
         jsonify({"message": f"You have not reviewed '{book_to_delete.title}'"}),
