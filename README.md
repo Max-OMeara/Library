@@ -384,3 +384,32 @@
         "message": "Error updating book status"
     }
     ```
+
+## Review Routes
+
+### Get User Reviews
+
+**Route:** `/api/get-reviews`
+
+- **Method:** GET
+- **Purpose:** Retrieves all reviews for books in a user's library organized by reading status
+- **Query Parameters:**
+  - `username` (required): The username of the library owner
+- **Response Format:** JSON
+- **Success Response:**
+  - **Code:** 200
+  - **Content:**
+
+    ```json
+    {
+        "username": "newuser123"
+    }
+    ```
+- **Error Responses:**
+  - **Code:** 404
+
+    ```json
+    {
+        "message": "You have not reviewed any books yet"
+    }
+    ```
