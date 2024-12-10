@@ -359,7 +359,18 @@ def add_review(user, review, book_id):
         200,
     )
 
+def get_reviews(user):
+    """Get all reviews of books by the user
+    Arguments:
+    user: class User
+    Returns:
+    tuple: (jsonified response, status_code)
+    """
 
+    if not user.reviews:
+        return jsonify({"message": "You have not reviewed any books yet"}), 404
+
+    return jsonify({"reviews": [review for review in user.reviews]}), 200
 
 def delete_review(user, book_id):
     """Deleting a user's review of a given book
