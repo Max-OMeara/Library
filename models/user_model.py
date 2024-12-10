@@ -4,13 +4,14 @@ from flask import jsonify
 import sqlite3
 import os
 import hashlib
+from utils.logger import configure_logger
 
 import requests
 from models.book_model import Book
 from utils.openlibrary import session
 
 logger = logging.getLogger(__name__)
-# configure_logger(logger)
+configure_logger(logger)
 DB_PATH = "/app/db/library.db"
 
 
