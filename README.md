@@ -151,7 +151,7 @@ deployment.
 
 ### Add favorite book
 
-**Route:** `/api/add-book-favorite-books`
+**Route:** `/api/add-favorite-books`
 
 - **Method:** POST
 - **Purpose:** Route to add a book from personal library onto a user's favorite
@@ -182,8 +182,12 @@ deployment.
 
     ```json
     {
-        "message": "{book.title} is already in your favorites"
+        "message": "Please provide a book ID"
     }
+    ```
+    ```json
+    {
+        "message": "Please provide a username"}
     ```
 
 - **Code:** 404
@@ -193,7 +197,11 @@ deployment.
       "message": "Book with ID {book_id} not found in your personal library"
   }
   ```
-
+  ```json
+  {
+      "message": "User not found"
+  }
+  ```
 ## Library Routes
 
 ### Get Library
