@@ -8,6 +8,8 @@ from models.user_model import (
     add_book_review,
     delete_review,
     get_reviews,
+    add_book_favorite_books,
+
 )
 
 app = Flask(__name__)
