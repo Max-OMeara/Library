@@ -1,9 +1,12 @@
+
 from models.user_model import *
 from models.book_model import *
 import pytest
 import hashlib
-
-
+from contextlib import contextmanager
+from flask import jsonify
+import os
+import sqlite3
 
 @pytest.fixture
 def sample_review(sample_book):
@@ -12,13 +15,6 @@ def sample_review(sample_book):
 @pytest.fixture
 def sample_book():
     return Book(id=1, title="Animal Farm", author="George Orwell", isbn="1234567890", status="Read")
-
-@pytest.fixture
-def sample_user():
-    example_user = User(1, 'example_user')
-    example_user.set_password("1234")
-    return example_user
-#end fixture
 
 @pytest.fixture
 def mock_cursor(mocker):
@@ -31,16 +27,16 @@ def mock_cursor(mocker):
     mock_cursor.fetchall.return_value = []
     mock_conn.commit.return_value = None
 
-    # Mock the get_db_connection context manager from sql_utils
+    # Mock the get_db_connection context manager from user_model
     @contextmanager
     def mock_get_db_connection():
         yield mock_conn  # Yield the mocked connection object
 
-    mocker.patch("models.song_model.get_db_connection", mock_get_db_connection)
-    mocker.patch("music_collection.models.song_model.get_db_connection", mock_get_db_connection)
-    
-    return mock_cursor  # Return the mock cursor so we can set expectations per test
+    mocker.patch("models.user_model.get_db_connection", mock_get_db_connection)
+    mocker.patch("music_collection.models.user_model.get_db_connection", mock_get_db_connection)
 
+    return mock_cursor  # Return the mock cursor so we can set expectations per test
+# end mock_cursor fixture
 
 
 
@@ -55,15 +51,27 @@ def test_to_dict(sample_review, sample_book):
 #endtest
 
 # tests for user class
+def test_set_password(mocker):
+    """Tests setting a password with a mocked salt"""
+    # Arrange
+    # Mock os.urandom to return 64 bytes of 'x' (0x78)
+    mock_salt = b'x' * 64
+    mocker.patch('os.urandom', return_value=mock_salt)
 
-def test_set_password(sample_user):
-    """Tests setting a password"""
-    p = '1234'
-    assert sample_user.password_hash == hashlib.sha512(
-            f"{p}{sample_user.salt}".encode()
-        ).hexdigest()
-    a = sample_user.set_password('1234')
-    assert a == None
+    user = User(id=1, username='test_user')
+    user.set_password('1234')
+
+    # The salt should be 'x' in hex (78) repeated 64 times
+    expected_salt = '78' * 64
+
+    expected_hash = hashlib.sha512(f"1234{expected_salt}".encode()).hexdigest()
+
+    assert user.salt == expected_salt, "Salt does not match the expected mocked value."
+    assert user.password_hash == expected_hash, "Password hash does not match the expected value."
+    
+    # Ensure set_password returns None
+    assert user.set_password('1234') is None
+# endtest_set_password
 
 def test_check_password(sample_user):
     """Tests checking a password"""
