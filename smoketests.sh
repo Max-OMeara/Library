@@ -9,29 +9,10 @@ API_URL="$BASE_URL/api"
 
 ECHO_JSON=false
 
-while [ "$#" -gt 0 ]; do
-  case $1 in
-    --echo-json) ECHO_JSON=true ;;
-    *) echo "Unknown parameter passed: $1"; exit 1 ;;
-  esac
-  shift
-done
-
-# Cleanup function to delete test user if it exists
-cleanup_test_user() {
-    echo "Cleaning up previous test data..."
-    DELETE_PAYLOAD='{"username": "testuser", "password": "testpass"}'
-    DELETE_RESPONSE=$(curl -s -X DELETE "${BASE_URL}/delete-account" \
-        -H "Content-Type: application/json" \
-        -d "$DELETE_PAYLOAD")
-    
-    if [ "$ECHO_JSON" = true ]; then
-        echo "Cleanup response: $DELETE_RESPONSE"
-    fi
-}
-
-# Run cleanup before tests
-cleanup_test_user
+# Test user credentials
+TEST_USER="testuser"
+TEST_PASS="testpass"
+NEW_PASS="newpass123"
 
 # Function to check if response is valid JSON
 check_json() {
@@ -64,75 +45,204 @@ make_request() {
   echo "$BODY"
 }
 
-# Test health-check
-echo "Testing health-check endpoint..."
-HEALTH_ENDPOINT="$API_URL/health"
-RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_ENDPOINT")
-if [ "$RESPONSE" -eq 200 ]; then
-  echo "Health-check endpoint is up."
-else
-  echo "Health-check endpoint failed with code $RESPONSE"
-  exit 1
-fi
+# Cleanup function to delete test user if it exists
+cleanup_test_user() {
+    echo "Cleaning up previous test data..."
+    DELETE_PAYLOAD="{\"username\": \"$TEST_USER\", \"password\": \"$TEST_PASS\"}"
+    DELETE_RESPONSE=$(curl -s -X DELETE "${BASE_URL}/delete-account" \
+        -H "Content-Type: application/json" \
+        -d "$DELETE_PAYLOAD")
+    
+    if [ "$ECHO_JSON" = true ]; then
+        echo "Cleanup response: $DELETE_RESPONSE"
+    fi
+}
 
-# Test create-account
+# Run cleanup before tests
+cleanup_test_user
+
+echo "Starting API smoke tests..."
+
+# 1. Health Check
+echo "Testing health-check endpoint..."
+HEALTH_RESPONSE=$(make_request "${API_URL}/health" "GET" "" 200)
+check_json "$HEALTH_RESPONSE"
+echo "Health-check endpoint is up."
+
+# 2. Account Management Tests
+echo -e "\nTesting account management endpoints..."
+
+# Create Account
 echo "Testing create-account endpoint..."
-CREATE_ACCOUNT_ENDPOINT="$BASE_URL/create-account"
-CREATE_PAYLOAD='{ "username": "testuser", "password": "testpass" }'
-CREATE_RESPONSE=$(make_request "$CREATE_ACCOUNT_ENDPOINT" "POST" "$CREATE_PAYLOAD" 201)
+CREATE_PAYLOAD="{\"username\": \"$TEST_USER\", \"password\": \"$TEST_PASS\"}"
+CREATE_RESPONSE=$(make_request "${BASE_URL}/create-account" "POST" "$CREATE_PAYLOAD" 201)
 check_json "$CREATE_RESPONSE"
 echo "Account creation test passed."
 
-# Test get-library (should be empty initially)
+# Login
+echo "Testing login endpoint..."
+LOGIN_PAYLOAD="{\"username\": \"$TEST_USER\", \"password\": \"$TEST_PASS\"}"
+LOGIN_RESPONSE=$(make_request "${BASE_URL}/login" "POST" "$LOGIN_PAYLOAD" 200)
+check_json "$LOGIN_RESPONSE"
+echo "Login test passed."
+
+# Update Password
+echo "Testing update-password endpoint..."
+UPDATE_PASS_PAYLOAD="{\"username\": \"$TEST_USER\", \"old_password\": \"$TEST_PASS\", \"new_password\": \"$NEW_PASS\"}"
+UPDATE_PASS_RESPONSE=$(make_request "${BASE_URL}/update-password" "PUT" "$UPDATE_PASS_PAYLOAD" 200)
+check_json "$UPDATE_PASS_RESPONSE"
+echo "Password update test passed."
+
+# Verify Login with New Password
+echo "Testing login with new password..."
+NEW_LOGIN_PAYLOAD="{\"username\": \"$TEST_USER\", \"password\": \"$NEW_PASS\"}"
+NEW_LOGIN_RESPONSE=$(make_request "${BASE_URL}/login" "POST" "$NEW_LOGIN_PAYLOAD" 200)
+check_json "$NEW_LOGIN_RESPONSE"
+echo "Login with new password test passed."
+
+# 3. Library Management Tests
+echo -e "\nTesting library management endpoints..."
+
+# Initial Empty Library Check
 echo "Testing get-library endpoint... (should be empty)"
-GET_LIBRARY_ENDPOINT="$API_URL/get-library?username=testuser"
+GET_LIBRARY_ENDPOINT="${API_URL}/get-library?username=$TEST_USER"
 LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
 check_json "$LIB_RESPONSE"
 
 if [ "$(echo "$LIB_RESPONSE" | jq '.books | length')" -eq 0 ] && [ "$(echo "$LIB_RESPONSE" | jq '.favorites | length')" -eq 0 ]; then
-  echo "Get-library test passed."
+    echo "Get-library test passed (empty library verified)."
 else
-  echo "Get-library test failed. Response: $LIB_RESPONSE"
-  exit 1
+    echo "Get-library test failed. Response: $LIB_RESPONSE"
+    exit 1
 fi
 
-# Test add-book
+# Add Book
 echo "Testing add-book endpoint..."
-ADD_BOOK_ENDPOINT="$API_URL/add-book"
-ADD_BOOK_PAYLOAD='{ "username": "testuser", "title": "Harry Potter and the Philosophers Stone", "author": "J.K. Rowling" }'
-ADD_BOOK_RESPONSE=$(make_request "$ADD_BOOK_ENDPOINT" "POST" "$ADD_BOOK_PAYLOAD" 201)
+ADD_BOOK_PAYLOAD="{\"username\": \"$TEST_USER\", \"title\": \"The Great Gatsby\", \"author\": \"F. Scott Fitzgerald\"}"
+ADD_BOOK_RESPONSE=$(make_request "${API_URL}/add-book" "POST" "$ADD_BOOK_PAYLOAD" 200)
 check_json "$ADD_BOOK_RESPONSE"
-echo "Add-book test passed."
+BOOK_ID=$(echo "$ADD_BOOK_RESPONSE" | jq -r '.book.id')
+if [ -z "$BOOK_ID" ] || [ "$BOOK_ID" = "null" ]; then
+    echo "Failed to get book ID from response: $ADD_BOOK_RESPONSE"
+    exit 1
+fi
+echo "Add-book test passed. Book ID: $BOOK_ID"
 
-# Test get-library (should have one book)
+# Verify Book Added
 echo "Testing get-library endpoint... (should have one book)"
 LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
 check_json "$LIB_RESPONSE"
 
-if [ "$(echo "$LIB_RESPONSE" | jq '.books."Want to Read" | length')" -eq 1 ] && [ "$(echo "$LIB_RESPONSE" | jq '.favorites | length')" -eq 0 ]; then
-  echo "Get-library test passed."
+BOOK_COUNT=$(echo "$LIB_RESPONSE" | jq '.books."Want to Read" | length')
+if [ "$BOOK_COUNT" -eq 1 ]; then
+    echo "Get-library test passed (one book verified)."
 else
-  echo "Get-library test failed. Response: $LIB_RESPONSE"
-  exit 1
+    echo "Get-library test failed. Expected 1 book, got $BOOK_COUNT. Response: $LIB_RESPONSE"
+    exit 1
 fi
 
-# Test delete-book
+# Update Book Status
+echo "Testing update-status endpoint..."
+UPDATE_STATUS_PAYLOAD="{\"username\": \"$TEST_USER\", \"status\": \"Reading\"}"
+UPDATE_STATUS_RESPONSE=$(make_request "${API_URL}/update-status/$BOOK_ID" "PUT" "$UPDATE_STATUS_PAYLOAD" 200)
+check_json "$UPDATE_STATUS_RESPONSE"
+echo "Update status test passed."
+
+# Verify Status Updated (with retry)
+echo "Testing get-library endpoint... (book should be in 'Reading' status)"
+MAX_RETRIES=3
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
+    check_json "$LIB_RESPONSE"
+    
+    READING_COUNT=$(echo "$LIB_RESPONSE" | jq '.books.Reading | length')
+    if [ "$READING_COUNT" -eq 1 ]; then
+        echo "Status update verified in library."
+        break
+    fi
+    
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        echo "Waiting for status update to propagate (attempt $RETRY_COUNT of $MAX_RETRIES)..."
+        sleep 1
+    fi
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "Status update verification failed after $MAX_RETRIES attempts. Response: $LIB_RESPONSE"
+    exit 1
+fi
+
+# 4. Review Management Tests
+echo -e "\nTesting review management endpoints..."
+
+# Add Review
+echo "Testing add-review endpoint..."
+ADD_REVIEW_PAYLOAD="{\"username\": \"$TEST_USER\", \"title\": \"The Great Gatsby\", \"book_id\": $BOOK_ID, \"review\": \"A masterpiece of American literature.\"}"
+ADD_REVIEW_RESPONSE=$(make_request "${API_URL}/add-review" "POST" "$ADD_REVIEW_PAYLOAD" 200)
+check_json "$ADD_REVIEW_RESPONSE"
+echo "Add review test passed."
+
+# Get Reviews
+echo "Testing get-reviews endpoint..."
+GET_REVIEWS_ENDPOINT="${API_URL}/get-reviews?username=$TEST_USER"
+REVIEWS_RESPONSE=$(make_request "$GET_REVIEWS_ENDPOINT" "GET" "" 200)
+check_json "$REVIEWS_RESPONSE"
+
+REVIEW_COUNT=$(echo "$REVIEWS_RESPONSE" | jq '.reviews | length')
+if [ "$REVIEW_COUNT" -eq 1 ]; then
+    echo "Get-reviews test passed (found 1 review)."
+else
+    echo "Get-reviews test failed. Expected 1 review, got $REVIEW_COUNT. Response: $REVIEWS_RESPONSE"
+    exit 1
+fi
+
+# Delete Review
+echo "Testing delete-review endpoint..."
+DELETE_REVIEW_PAYLOAD="{\"username\": \"$TEST_USER\", \"book_id\": $BOOK_ID}"
+DELETE_REVIEW_RESPONSE=$(make_request "${API_URL}/delete-review" "DELETE" "$DELETE_REVIEW_PAYLOAD" 200)
+check_json "$DELETE_REVIEW_RESPONSE"
+echo "Delete review test passed."
+
+# Verify Review Deleted
+echo "Testing get-reviews endpoint... (should be empty)"
+REVIEWS_RESPONSE=$(make_request "$GET_REVIEWS_ENDPOINT" "GET" "" 404)
+check_json "$REVIEWS_RESPONSE"
+
+if echo "$REVIEWS_RESPONSE" | jq -e '.message | contains("not reviewed")' > /dev/null; then
+    echo "Review deletion verified."
+else
+    echo "Review deletion verification failed. Response: $REVIEWS_RESPONSE"
+    exit 1
+fi
+
+# 5. Cleanup Tests
+echo -e "\nRunning cleanup tests..."
+
+# Delete Book
 echo "Testing delete-book endpoint..."
-DELETE_BOOK_ENDPOINT="$API_URL/delete-book/1?username=testuser"
-DELETE_RESPONSE=$(make_request "$DELETE_BOOK_ENDPOINT" "DELETE" "" 200)
-check_json "$DELETE_RESPONSE"
+DELETE_BOOK_RESPONSE=$(make_request "${API_URL}/delete-book/$BOOK_ID?username=$TEST_USER" "DELETE" "" 200)
+check_json "$DELETE_BOOK_RESPONSE"
 echo "Delete-book test passed."
 
-# Test get-library (should be empty again)
+# Verify Library Empty
 echo "Testing get-library endpoint... (should be empty again)"
 LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
 check_json "$LIB_RESPONSE"
 
 if [ "$(echo "$LIB_RESPONSE" | jq '.books | length')" -eq 0 ] && [ "$(echo "$LIB_RESPONSE" | jq '.favorites | length')" -eq 0 ]; then
-  echo "Get-library test passed."
+    echo "Final library check passed (empty library verified)."
 else
-  echo "Get-library test failed. Response: $LIB_RESPONSE"
-  exit 1
+    echo "Final library check failed. Response: $LIB_RESPONSE"
+    exit 1
 fi
 
-echo "All smoke tests passed."
+# Delete Account
+echo "Testing delete-account endpoint..."
+DELETE_ACCOUNT_PAYLOAD="{\"username\": \"$TEST_USER\", \"password\": \"$NEW_PASS\"}"
+DELETE_ACCOUNT_RESPONSE=$(make_request "${BASE_URL}/delete-account" "DELETE" "$DELETE_ACCOUNT_PAYLOAD" 200)
+check_json "$DELETE_ACCOUNT_RESPONSE"
+echo "Delete account test passed."
+
+echo -e "\n✅ All smoke tests completed successfully!"
