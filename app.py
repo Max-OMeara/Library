@@ -391,5 +391,46 @@ def update_book_status(book_id):
     return update_status(user, book_id, new_status)
 
 
+@app.route("/api/add-favorite-book", methods=["POST"])
+def add_favorite_book():
+    """Add a book to a user's favorite books library.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username of the account
+            book_id (int): The ID of the book to add to favorites
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+                200: Success (book added to favorites)
+                400: Bad request (missing/invalid data)
+                404: Not found (user or book not found)
+    """
+    data = request.get_json()
+
+    if not data.get("username"):
+        return jsonify({"message": "Please provide a username"}), 400
+
+    if not data.get("book_id"):
+        return jsonify({"message": "Please provide a book ID"}), 400
+
+    username = data["username"]
+    book_id = data["book_id"]
+
+    user = User.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    user_library = get_library(user)
+    if not any(book["id"] == book_id for book in user_library["books"]):
+        return jsonify({"message": "Book not found in user's personal library"}), 404
+
+    # Add the book to the favorite books table (assuming there is a favorite_books table)
+    return add_book_favorite_books(user, book_id)
+
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
