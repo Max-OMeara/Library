@@ -114,6 +114,8 @@ def test_check_password(sample_user):
 
 # endtest_check_password
 
+
+
 def test_get_user_by_username(mock_cursor, sample_user):
     """Tests getting a user by username"""
     mock_cursor.fetchone.return_value = (1, 'test_user')
@@ -135,6 +137,18 @@ def test_add_book_personal_library(sample_user, sample_book):
     assert "message" in response
     assert "book" in response
     assert response["book"]["title"] == "Animal Farm"
+# endtest_add_book_personal_library
+
+def add_book_favorite_books(sample_user, sample_book):
+    """Tests adding a book to the favorite books"""
+    response, status_code = add_book_favorite_books(sample_user, sample_book)
+    assert status_code == 200
+    assert response == jsonify({"message": "Book added to favorite books."})
+    assert sample_book in sample_user.favorite_books
+    assert "message" in response
+    assert "book" in response
+    assert response["book"]["title"] == "Animal Farm"
+# endtest_add_book_favorite_books
 
 # Additional Tests for User Class
 def test_get_library(sample_user):
@@ -169,10 +183,9 @@ def test_update_status(sample_user, sample_book):
     assert response["book"]["title"] == "Animal Farm"
 # endtest_update_status
 
-#def add_book_favorite_books
+
 # def add_book_review
 # def get_reviews
 # def delete_review
-# def delete_book_from_library
-# def update_status
+
 
