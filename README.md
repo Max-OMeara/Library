@@ -139,6 +139,46 @@
         "message": "Error updating password"
     }
     ```
+### Add favorite book
+**Route:** `/api/add-book-favorite-books`
+
+- **Method:** POST
+- **Purpose:** Route to add a book from personal library onto a user's favorite books list and mark it as read
+- **Request Body:**
+  ```json
+    {
+    "username" :"(String): User's chosen username."
+    "book_id" :"(Int) Id of book that will be added to favorite's list"
+    }
+  ```
+- **Response Format:** JSON
+- **Success Response:**
+  - **Code:** 200
+  - **Content:**
+
+    ```json
+    {
+      "message": "{book_to_favorite.title} has been added to your favorites and marked as Read"
+      "review": "Custom Message"
+    }
+    ```
+- **Error Responses:**
+  - **Code:** 400
+
+    ```json
+    {
+        "message": "{book.title} is already in your favorites"
+    }
+    ```
+
+ - **Code:** 404
+
+  ```json
+  {
+      "message": "Book with ID {book_id} not found in your personal library"
+  }
+  ```
+
 
 ## Library Routes
 
@@ -460,44 +500,3 @@
   }
   ```
 
-### Add favorite book
-**Route:** `/api/add-book-favorite-books`
-
-- **Method:** POST
-- **Purpose:** Route to add a book from personal library onto a user's favorite books list and mark it as read
-- **Request Body:**
-  ```json
-    {
-    "username" :"(String): User's chosen username."
-    "book_id" :"(Int) Id of book that will be added to favorite's list"
-    }
-  ```
-- **Response Format:** JSON
-- **Success Response:**
-  - **Code:** 200
-  - **Content:**
-
-    ```json
-    {
-      "message": "{book_to_favorite.title} has been added to your favorites and marked as Read"
-      "review": "Custom Message"
-    }
-    ```
-- **Error Responses:**
-  - **Code:** 400
-
-    ```json
-    {
-        "message": "{book.title} is already in your favorites"
-    }
-    ```
-
- - **Code:** 404
-
-  ```json
-  {
-      "message": "Book with ID {book_id} not found in your personal library"
-  }
-  ```
-
-  ```
