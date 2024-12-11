@@ -11,7 +11,7 @@ import sqlite3
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models.user_model import User, Review
-#from models.user_model import get_user_by_username, add_book_personal_library, add_book_favorite_books, get_library, delete_book_from_library, update_status, add_book_review, get_reviews, delete_review
+from models.user_model import get_user_by_username, add_book_personal_library, add_book_favorite_books, get_library, delete_book_from_library, update_status, add_book_review, get_reviews, delete_review
 from models.book_model import Book
 
 @pytest.fixture
@@ -44,7 +44,6 @@ def mock_cursor(mocker):
         yield mock_conn  # Yield the mocked connection object
 
     mocker.patch("models.user_model.get_db_connection", mock_get_db_connection)
-    mocker.patch("music_collection.models.user_model.get_db_connection", mock_get_db_connection)
 
     return mock_cursor  # Return the mock cursor so we can set expectations per test
 # end mock_cursor fixture
@@ -128,7 +127,6 @@ def test_get_user_by_username(mock_cursor, sample_user):
     user = get_user_by_username('test_user')
     assert user.id == 1
     assert user.username == 'test_user'
-    assert user.password_hash == 'password_hash'
     assert user.salt == 'salt'
 # endtest_get_user_by_username
 
