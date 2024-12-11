@@ -88,8 +88,24 @@ def test_check_password(sample_user):
 
 
 def test_add_book_personal_library(sample_user, sample_book):
+    """Tests adding a book to the personal library"""
     response, status_code = add_book_personal_library(sample_user, sample_book)
     assert status_code == 200
+    assert response == jsonify({"message": "Book added to personal library."})
+    assert sample_book in sample_user.library
+    assert "message" in response
+    assert "book" in response
+    assert response["book"]["title"] == "Animal Farm"
+
+# Additional Tests for User Class
+def test_get_library(sample_user):
+    """Tests getting the user's library"""
+    response, status_code = get_library(sample_user)
+    assert status_code == 200
+    assert response == jsonify(sample_user.library)
+    assert len(response.json) == 0
+# endtest_get_library
+
     #assert response == jsonify*
 #def add_book_favorite_books
 # def add_book_review
