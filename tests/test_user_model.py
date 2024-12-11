@@ -185,6 +185,17 @@ def test_update_status(sample_user, sample_book):
 
 
 # def add_book_review
+def test_add_book_review(sample_user, sample_book):
+    """Tests adding a review for a book"""
+    response, status_code = add_book_review(sample_user, sample_book, "Great Read")
+    assert status_code == 200
+    assert response == jsonify({"message": "Review added."})
+    assert sample_book in sample_user.reviews
+    assert "message" in response
+    assert "book" in response
+    assert response["book"]["title"] == "Animal Farm"
+# endtest_add_book_review
+
 # def get_reviews
 # def delete_review
 
