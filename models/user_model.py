@@ -740,20 +740,69 @@ def delete_book_from_library(user, book_id: int):
             404,
         )
 
-    # Remove the book
-    user.personal_library.remove(book_to_delete)
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
 
-    logger.info(
-        "Book '%s' removed from library of user: %s",
-        book_to_delete.title,
-        user.username,
-    )
-    return (
-        jsonify(
-            {"message": f"'{book_to_delete.title}' has been removed from your library"}
-        ),
-        200,
-    )
+            # Remove from user_books table
+            cursor.execute(
+                "DELETE FROM user_books WHERE user_id = ? AND book_id = ?",
+                (user.id, book_id),
+            )
+
+            # Remove from favorite_books table
+            cursor.execute(
+                "DELETE FROM favorite_books WHERE user_id = ? AND book_id = ?",
+                (user.id, book_id),
+            )
+
+            # Check if book is not referenced by any other user
+            cursor.execute(
+                """
+                SELECT 1 FROM user_books 
+                WHERE book_id = ? 
+                LIMIT 1
+                """,
+                (book_id,),
+            )
+            if not cursor.fetchone():
+                # If book is not referenced by any other user, delete it from books table
+                cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
+
+            conn.commit()
+
+            # Remove from memory lists
+            user.personal_library.remove(book_to_delete)
+
+            # Also remove from favorites list if present
+            for book in user.favorite_books[
+                :
+            ]:  # Create a copy of the list to safely modify during iteration
+                if book.id == book_id:
+                    user.favorite_books.remove(book)
+                    break
+
+            logger.info(
+                "Book '%s' removed from library and favorites of user: %s",
+                book_to_delete.title,
+                user.username,
+            )
+            return (
+                jsonify(
+                    {
+                        "message": f"'{book_to_delete.title}' has been removed from your library and favorites"
+                    }
+                ),
+                200,
+            )
+
+    except sqlite3.Error as e:
+        logger.error(
+            "Database error while deleting book for user %s: %s",
+            user.username,
+            str(e),
+        )
+        return jsonify({"message": "Error deleting book"}), 500
 
 
 def update_status(user, book_id: int, new_status: str):
