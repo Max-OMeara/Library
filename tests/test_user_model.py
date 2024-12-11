@@ -1,12 +1,17 @@
-from models.user_model import *
-from models.book_model import *
+
+import sys
+import os
 import pytest
 import hashlib
 from contextlib import contextmanager
 from flask import jsonify
-import os
 import sqlite3
-from models.user_model import get_user_by_username
+
+# Add the project root to sys.path to ensure modules are discoverable
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from models.user_model import User, Review
+from models.book_model import Book
 
 @pytest.fixture
 def sample_user():
