@@ -259,8 +259,29 @@ class User:
                     "DELETE FROM favorite_books WHERE user_id = ?", (user_id,)
                 )
 
+                # Get books to delete
+                cursor.execute(
+                    """
+                    SELECT DISTINCT b.id 
+                    FROM books b
+                    JOIN user_books ub ON b.id = ub.book_id 
+                    WHERE ub.user_id = ? 
+                    AND NOT EXISTS (
+                        SELECT 1 FROM user_books ub2 
+                        WHERE ub2.book_id = b.id 
+                        AND ub2.user_id != ?
+                    )
+                """,
+                    (user_id, user_id),
+                )
+                books_to_delete = cursor.fetchall()
+
                 # Delete from personal library
                 cursor.execute("DELETE FROM user_books WHERE user_id = ?", (user_id,))
+
+                # Delete orphaned books
+                for (book_id,) in books_to_delete:
+                    cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
 
                 # Finally, delete the user
                 cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
