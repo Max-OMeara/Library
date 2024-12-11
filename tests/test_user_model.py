@@ -197,6 +197,14 @@ def test_add_book_review(sample_user, sample_book):
 # endtest_add_book_review
 
 # def get_reviews
+def test_get_reviews(sample_user):
+    """Tests getting the user's reviews"""
+    response, status_code = get_reviews(sample_user)
+    assert status_code == 200
+    assert response == jsonify(sample_user.reviews)
+    assert len(response.json) == 0
+# endtest_get_reviews
+
 # def delete_review
 
 
