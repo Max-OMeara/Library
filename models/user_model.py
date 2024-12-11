@@ -49,10 +49,18 @@ class User:
         Args:
             password: The plain text password to hash
         """
-        self.salt = os.urandom(64).hex()
-        self.password_hash = hashlib.sha512(
-            f"{password}{self.salt}".encode()
-        ).hexdigest()
+
+        try:
+            self.salt = os.urandom(64).hex()
+            self.password_hash = hashlib.sha512(
+                f"{password}{self.salt}".encode()
+            ).hexdigest()
+            logger.info("Password successfully hashed for user: %s", self.username)
+        except Exception as e:
+            logger.error(
+                "Error hashing password for user %s: %s", self.username, str(e)
+            )
+            raise
 
     def check_password(self, password: str) -> bool:
         """Verify the password against stored hash using SHA-512
@@ -61,12 +69,34 @@ class User:
         Returns:
             bool: True if password matches, False otherwise
         """
-        if not self.salt or not self.password_hash:
+        try:
+            if not self.salt or not self.password_hash:
+                logger.warning(
+                    "Missing salt or password hash for user: %s", self.username
+                )
+                return False
+
+            password_to_check = hashlib.sha512(
+                f"{password}{self.salt}".encode()
+            ).hexdigest()
+
+            is_match = self.password_hash == password_to_check
+            if is_match:
+                logger.info(
+                    "Successful password verification for user: %s", self.username
+                )
+            else:
+                logger.warning(
+                    "Failed password verification attempt for user: %s", self.username
+                )
+
+            return is_match
+
+        except Exception as e:
+            logger.error(
+                "Error checking password for user %s: %s", self.username, str(e)
+            )
             return False
-        password_to_check = hashlib.sha512(
-            f"{password}{self.salt}".encode()
-        ).hexdigest()
-        return self.password_hash == password_to_check
 
     @staticmethod
     def create_user_account(username: str, password: str):
@@ -135,11 +165,16 @@ class User:
                     user = User(id=user_data[0], username=user_data[1])
                     user.password_hash = user_data[2]
                     user.salt = user_data[3]
+                    logger.info("Successfully retrieved user: %s", username)
                     return user
+
+                logger.warning("User not found: %s", username)
                 return None
 
         except sqlite3.Error as e:
-            logger.error("Database error: %s", str(e))
+            logger.error(
+                "Database error while retrieving user %s: %s", username, str(e)
+            )
             return None
 
     def update_password(self, new_password: str):
@@ -150,6 +185,7 @@ class User:
             tuple: (message dict, status code)
         """
         try:
+            # set_password already includes logging for the hashing process
             self.set_password(new_password)
 
             with sqlite3.connect(DB_PATH) as conn:
@@ -164,10 +200,25 @@ class User:
                 )
                 conn.commit()
 
-            return jsonify({"message": "Password updated successfully"}), 200
+                logger.info(
+                    "Password successfully updated in database for user: %s",
+                    self.username,
+                )
+                return jsonify({"message": "Password updated successfully"}), 200
 
         except sqlite3.Error as e:
-            logger.error("Database error updating password: %s", str(e))
+            logger.error(
+                "Database error updating password for user %s: %s",
+                self.username,
+                str(e),
+            )
+            return jsonify({"message": "Error updating password"}), 500
+        except Exception as e:
+            logger.error(
+                "Unexpected error updating password for user %s: %s",
+                self.username,
+                str(e),
+            )
             return jsonify({"message": "Error updating password"}), 500
 
 
@@ -178,29 +229,52 @@ def get_library(user):
     Returns:
     tuple: (jsonified response, status_code)
     """
-    library = {
-        "books": {},
-        "favorites": [book.to_dict() for book in user.favorite_books],
-    }
+    try:
+        library = {
+            "books": {},
+            "favorites": [book.to_dict() for book in user.favorite_books],
+        }
 
-    # Organize books by status
-    for book in user.personal_library:
-        if book.status not in library["books"]:
-            library["books"][book.status] = []
-        library["books"][book.status].append(book.to_dict())
+        # Organize books by status
+        for book in user.personal_library:
+            if book.status not in library["books"]:
+                library["books"][book.status] = []
+            library["books"][book.status].append(book.to_dict())
 
-    return jsonify(library), 200
+        logger.info(
+            "Successfully retrieved library for user %s: %d books, %d favorites",
+            user.username,
+            len(user.personal_library),
+            len(user.favorite_books),
+        )
+        return jsonify(library), 200
+
+    except Exception as e:
+        logger.error("Error retrieving library for user %s: %s", user.username, str(e))
+        return jsonify({"message": "Error retrieving library"}), 500
 
 
-def add_book_personal_library(user, book_data):
-    """Add a book to the user's personal library using OpenLibrary API
-    Arguments:
-    user: class User
-    book_data: dict containing book information (must include 'title', optional 'author')
+def add_book_personal_library(user, book_data: dict):
+    """Add a book to the user's personal library using OpenLibrary API.
+
+    Args:
+        user: User instance to add the book to
+        book_data: dict containing book information with keys:
+            title (str): Required. The title of the book to search for
+            author (str): Optional. The author's name to narrow search
+
     Returns:
-    tuple: (jsonified response, status_code)
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with message and book data
+            - status_code: HTTP status code
+                200: Success (book added)
+                300: Multiple matches found
+                400: Bad request (missing title or duplicate book)
+                404: Book not found
+                500: OpenLibrary API error
     """
     if not book_data.get("title"):
+        logger.warning("Attempt to add book without title by user: %s", user.username)
         return {"message": "Please provide a book title"}, 400
 
     # Set up OpenLibrary API search parameters
@@ -212,6 +286,16 @@ def add_book_personal_library(user, book_data):
 
     if "author" in book_data:
         params["author"] = book_data["author"]
+        logger.info(
+            "Searching for book '%s' by '%s' for user: %s",
+            book_data["title"],
+            book_data["author"],
+            user.username,
+        )
+    else:
+        logger.info(
+            "Searching for book '%s' for user: %s", book_data["title"], user.username
+        )
 
     # Search OpenLibrary API
     try:
@@ -220,46 +304,71 @@ def add_book_personal_library(user, book_data):
             params=params,
         )
         response.raise_for_status()
-    except requests.RequestException:
+    except requests.RequestException as e:
+        logger.error("OpenLibrary API error for user %s: %s", user.username, str(e))
         return {"message": "Failed to fetch from OpenLibrary"}, 500
 
     books = response.json().get("docs", [])
 
     if not books:
+        logger.info(
+            "No books found with title '%s' for user: %s",
+            book_data["title"],
+            user.username,
+        )
         return {"message": "No books found with that title"}, 404
 
     if len(books) == 1 or "author" in book_data:
         # Add first matching book
         book = books[0]
+        book_title = book.get("title", "Unknown")
+        book_author = book.get("author_name", ["Unknown"])[0]
 
         # Check for duplicate books
         for existing_book in user.personal_library:
             if (
-                existing_book.title.lower() == book.get("title", "Unknown").lower()
-                and existing_book.author.lower()
-                == book.get("author_name", ["Unknown"])[0].lower()
+                existing_book.title.lower() == book_title.lower()
+                and existing_book.author.lower() == book_author.lower()
             ):
+                logger.info(
+                    "Duplicate book attempt '%s' by '%s' for user: %s",
+                    book_title,
+                    book_author,
+                    user.username,
+                )
                 return {
-                    "message": f"'{book.get('title', 'Unknown')}' by {book.get('author_name', ['Unknown'])[0]} is already in your library with status: '{existing_book.status}'",
+                    "message": f"'{book_title}' by {book_author} is already in your library with status: '{existing_book.status}'",
                     "book": existing_book.to_dict(),
                 }, 400
 
         # If no duplicate found, add the new book
         new_book = Book(
             id=len(user.personal_library) + 1,
-            title=book.get("title", "Unknown"),
-            author=book.get("author_name", ["Unknown"])[0],
+            title=book_title,
+            author=book_author,
             isbn=book.get("isbn", [None])[0] if book.get("isbn") else None,
             status="Want to Read",
         )
         user.personal_library.append(new_book)
 
+        logger.info(
+            "Successfully added book '%s' by '%s' for user: %s",
+            new_book.title,
+            new_book.author,
+            user.username,
+        )
         return {
             "message": f"Success! '{new_book.title}' by {new_book.author} has been added to your library.",
             "book": new_book.to_dict(),
         }, 200
 
     # Multiple books found
+    logger.info(
+        "Multiple books (%d) found with title '%s' for user: %s",
+        len(books),
+        book_data["title"],
+        user.username,
+    )
     return {
         "message": f"I found {len(books)} books with that title. Please specify the author's name to help me find the right one:",
         "books": [
@@ -275,13 +384,21 @@ def add_book_personal_library(user, book_data):
 
 
 def add_book_favorite_books(user, book_id: int):
-    """Add a book from personal library to favorite books
-    Arguments:
-    user: class User
-    book_id: int, ID of the book to add to favorites
+    """Add a book from personal library to favorite books and mark as Read.
+
+    Args:
+        user: User instance to add the favorite book to
+        book_id: ID of the book to add to favorites
+
     Returns:
-    tuple: (jsonified response, status_code)
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with message and book data
+            - status_code: HTTP status code
+                200: Success (book added to favorites)
+                400: Bad request (book already in favorites)
+                404: Book not found in personal library
     """
+
     # Find the book in personal library
     book_to_favorite = None
     for book in user.personal_library:
@@ -290,6 +407,11 @@ def add_book_favorite_books(user, book_id: int):
             break
 
     if not book_to_favorite:
+        logger.warning(
+            "Attempt to favorite non-existent book (ID: %d) by user: %s",
+            book_id,
+            user.username,
+        )
         return (
             jsonify(
                 {
@@ -302,6 +424,11 @@ def add_book_favorite_books(user, book_id: int):
     # Check if book is already in favorites
     for book in user.favorite_books:
         if book.id == book_id:
+            logger.info(
+                "Duplicate favorite attempt for book '%s' by user: %s",
+                book.title,
+                user.username,
+            )
             return (
                 jsonify({"message": f"'{book.title}' is already in your favorites"}),
                 400,
@@ -313,6 +440,11 @@ def add_book_favorite_books(user, book_id: int):
     # Add to favorites
     user.favorite_books.append(book_to_favorite)
 
+    logger.info(
+        "Book '%s' added to favorites for user: %s",
+        book_to_favorite.title,
+        user.username,
+    )
     return (
         jsonify(
             {
@@ -335,6 +467,7 @@ def add_book_review(user, review_text: str, book_id: int):
     """
 
     if not review_text:
+        logger.warning("Attempt to add empty review by user: %s", user.username)
         return jsonify({"message": "Please provide a review"}), 400
 
     # Find the book in personal library
@@ -345,6 +478,11 @@ def add_book_review(user, review_text: str, book_id: int):
             break
 
     if not book_to_review:
+        logger.warning(
+            "Attempt to review non-existent book (ID: %d) by user: %s",
+            book_id,
+            user.username,
+        )
         return (
             jsonify(
                 {
@@ -357,6 +495,11 @@ def add_book_review(user, review_text: str, book_id: int):
     # Check if user has already reviewed the book
     for review in user.reviews:
         if review.book_id == book_id:
+            logger.info(
+                "Duplicate review attempt for book '%s' by user: %s",
+                book_to_review.title,
+                user.username,
+            )
             return (
                 jsonify(
                     {"message": f"You have already reviewed '{book_to_review.title}'"}
@@ -372,6 +515,9 @@ def add_book_review(user, review_text: str, book_id: int):
     # Add review
     user.reviews.append(new_review)
 
+    logger.info(
+        "Review added for book '%s' by user: %s", book_to_review.title, user.username
+    )
     return (
         jsonify(
             {
@@ -384,16 +530,24 @@ def add_book_review(user, review_text: str, book_id: int):
 
 
 def get_reviews(user):
-    """Get all reviews of books by the user
-    Arguments:
-    user: class User
+    """Get all reviews of books by the user.
+
+    Args:
+        user: User instance whose reviews to retrieve
+
     Returns:
-    tuple: (jsonified response, status_code)
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with list of reviews or message
+            - status_code: HTTP status code
+                200: Success (reviews found)
+                404: Not found (no reviews exist)
     """
 
     if not user.reviews:
+        logger.info("No reviews found for user: %s", user.username)
         return jsonify({"message": "You have not reviewed any books yet"}), 404
 
+    logger.info("Retrieved %d reviews for user: %s", len(user.reviews), user.username)
     return jsonify({"reviews": [review.to_dict() for review in user.reviews]}), 200
 
 
@@ -409,6 +563,9 @@ def delete_review(user, book_id: int):
     """
 
     if not book_id:
+        logger.warning(
+            "Attempt to delete review without book_id by user: %s", user.username
+        )
         return jsonify({"message": "Please provide a book to delete"}), 400
 
     # Find the book in personal library
@@ -419,6 +576,11 @@ def delete_review(user, book_id: int):
             break
 
     if not book_to_delete:
+        logger.warning(
+            "Attempt to delete review for non-existent book (ID: %d) by user: %s",
+            book_id,
+            user.username,
+        )
         return (
             jsonify(
                 {
@@ -437,6 +599,11 @@ def delete_review(user, book_id: int):
 
     if review_to_delete:
         user.reviews.remove(review_to_delete)
+        logger.info(
+            "Review deleted for book '%s' by user: %s",
+            book_to_delete.title,
+            user.username,
+        )
         return (
             jsonify(
                 {"message": f"Review for '{book_to_delete.title}' has been deleted"}
@@ -444,6 +611,11 @@ def delete_review(user, book_id: int):
             200,
         )
 
+    logger.info(
+        "Attempt to delete non-existent review for book '%s' by user: %s",
+        book_to_delete.title,
+        user.username,
+    )
     return (
         jsonify({"message": f"You have not reviewed '{book_to_delete.title}'"}),
         400,
@@ -451,12 +623,18 @@ def delete_review(user, book_id: int):
 
 
 def delete_book_from_library(user, book_id: int):
-    """Delete a book from the user's personal library
-    Arguments:
-    user: class User
-    book_id: int, ID of the book to delete
+    """Delete a book from the user's personal library.
+
+    Args:
+        user: User instance whose library to modify
+        book_id: ID of the book to delete
+
     Returns:
-    tuple: (jsonified response, status_code)
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with success or error message
+            - status_code: HTTP status code
+                200: Success (book deleted)
+                404: Not found (book not in library)
     """
     # Find the book in personal library
     book_to_delete = None
@@ -466,6 +644,11 @@ def delete_book_from_library(user, book_id: int):
             break
 
     if not book_to_delete:
+        logger.warning(
+            "Attempt to delete non-existent book (ID: %d) from library of user: %s",
+            book_id,
+            user.username,
+        )
         return (
             jsonify({"message": f"Book with ID {book_id} not found in your library"}),
             404,
@@ -474,6 +657,11 @@ def delete_book_from_library(user, book_id: int):
     # Remove the book
     user.personal_library.remove(book_to_delete)
 
+    logger.info(
+        "Book '%s' removed from library of user: %s",
+        book_to_delete.title,
+        user.username,
+    )
     return (
         jsonify(
             {"message": f"'{book_to_delete.title}' has been removed from your library"}
@@ -503,6 +691,12 @@ def update_status(user, book_id: int, new_status: str):
 
     # Checking for valid status
     if new_status not in ["Want to Read", "Reading", "Read"]:
+        logger.warning(
+            "Invalid status '%s' provided for user %s, book ID %d",
+            new_status,
+            user.username,
+            book_id,
+        )
         return (
             jsonify({"message": f"Invalid reading status provided {new_status}"}),
             400,
@@ -514,15 +708,21 @@ def update_status(user, book_id: int, new_status: str):
         if book.id == book_id:
             book_to_update = book
             break
-    # endfor
 
     if not book_to_update:
+        logger.warning(
+            "Attempt to update status for non-existent book (ID: %d) by user: %s",
+            book_id,
+            user.username,
+        )
         return (
             jsonify({"message": f"Book with ID {book_id} not found in your library"}),
             404,
         )
 
+    old_status = book_to_update.status
     book_to_update.status = new_status
+
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
@@ -536,6 +736,13 @@ def update_status(user, book_id: int, new_status: str):
             )
             conn.commit()
 
+        logger.info(
+            "Updated status of book '%s' from '%s' to '%s' for user: %s",
+            book_to_update.title,
+            old_status,
+            new_status,
+            user.username,
+        )
         return (
             jsonify(
                 {
@@ -547,5 +754,9 @@ def update_status(user, book_id: int, new_status: str):
         )
 
     except sqlite3.Error as e:
-        logger.error("Database error while updating book status: %s", str(e))
+        logger.error(
+            "Database error while updating book status for user %s: %s",
+            user.username,
+            str(e),
+        )
         return jsonify({"message": "Error updating book status"}), 500
