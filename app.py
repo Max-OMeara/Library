@@ -9,7 +9,10 @@ from models.user_model import (
     delete_review,
     get_reviews,
     add_book_favorite_books,
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 )
 
 app = Flask(__name__)
@@ -424,14 +427,18 @@ def add_favorite_book():
     user = User.get_user_by_username(username)
     if not user:
         return jsonify({"message": "User not found"}), 404
+    # Check if book exists in user's library
+    book_exists = False
+    for book in user.personal_library:
+        if book.id == book_id:
+            book_exists = True
+            break
 
-    user_library = get_library(user)
-    if not any(book["id"] == book_id for book in user_library["books"]):
+    if not book_exists:
         return jsonify({"message": "Book not found in user's personal library"}), 404
 
     # Add the book to the favorite books table (assuming there is a favorite_books table)
     return add_book_favorite_books(user, book_id)
-
 
 
 if __name__ == "__main__":
