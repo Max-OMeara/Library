@@ -11,6 +11,7 @@ import sqlite3
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models.user_model import User, Review
+#from models.user_model import get_user_by_username, add_book_personal_library, add_book_favorite_books, get_library, delete_book_from_library, update_status, add_book_review, get_reviews, delete_review
 from models.book_model import Book
 
 @pytest.fixture
