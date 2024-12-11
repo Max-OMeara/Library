@@ -118,6 +118,18 @@ def test_delete_book_from_library(sample_user, sample_book):
     assert response["book"]["title"] == "Animal Farm"
 # endtest_delete_book_from_library
 
+def test_update_status(sample_user, sample_book):
+    """Tests updating the status of a book in the personal library"""
+    sample_user.library.append(sample_book)
+    response, status_code = update_status(sample_user, sample_book, "Reading")
+    assert status_code == 200
+    assert response == jsonify({"message": "Book status updated."})
+    assert sample_book.status == "Reading"
+    assert "message" in response
+    assert "book" in response
+    assert response["book"]["title"] == "Animal Farm"
+# endtest_update_status
+
     #assert response == jsonify*
 #def add_book_favorite_books
 # def add_book_review
