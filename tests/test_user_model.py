@@ -10,6 +10,11 @@ import sqlite3
 from models.user_model import get_user_by_username
 
 @pytest.fixture
+def sample_user():
+    return User(id=1, username='test_user', password_hash='password_hash', salt='salt')
+# end sample_user fixture
+
+@pytest.fixture
 def sample_review(sample_book):
     return Review(sample_book.id, sample_book.title, "Great Read")
 
@@ -38,8 +43,6 @@ def mock_cursor(mocker):
 
     return mock_cursor  # Return the mock cursor so we can set expectations per test
 # end mock_cursor fixture
-
-
 
 # tests for review class
 def test_to_dict(sample_review, sample_book):
@@ -114,8 +117,6 @@ def test_check_password(sample_user):
 
 # endtest_check_password
 
-
-
 def test_get_user_by_username(mock_cursor, sample_user):
     """Tests getting a user by username"""
     mock_cursor.fetchone.return_value = (1, 'test_user')
@@ -125,8 +126,6 @@ def test_get_user_by_username(mock_cursor, sample_user):
     assert user.password_hash == 'password_hash'
     assert user.salt == 'salt'
 # endtest_get_user_by_username
-
-
 
 def test_add_book_personal_library(sample_user, sample_book):
     """Tests adding a book to the personal library"""
@@ -206,5 +205,17 @@ def test_get_reviews(sample_user):
 # endtest_get_reviews
 
 # def delete_review
+def test_delete_review(sample_user, sample_review):
+    """Tests deleting a review"""
+    sample_user.reviews.append(sample_review)
+    response, status_code = delete_review(sample_user, sample_review)
+    assert status_code == 200
+    assert response == jsonify({"message": "Review deleted."})
+    assert sample_review not in sample_user.reviews
+    assert "message" in response
+    assert "review" in response
+    assert response["review"]["book_title"] == "Animal Farm"
+# endtest_delete_review
 
-
+if __name__ == "__main__":
+    pytest.main()
