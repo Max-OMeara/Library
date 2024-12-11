@@ -139,6 +139,51 @@ def update_password():
     return user.update_password(data["new_password"])
 
 
+@app.route("/delete-account", methods=["DELETE"])
+def delete_account():
+    """Delete a user account and all associated data.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username of the account
+            password (str): The password of the account
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with success or error message
+            - status_code: HTTP status code
+                200: Success (account deleted)
+                404: Not found (user doesn't exist)
+                500: Server error (database error)
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return (
+                jsonify({"message": "Please provide both username and password"}),
+                400,
+            )
+
+        user = User.get_user_by_username(username)
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        if not user.check_password(password):
+            return jsonify({"message": "Invalid password"}), 401
+
+        # Delete user's data
+        return User.delete_user_account(username)
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
 # Library Routes
 
 

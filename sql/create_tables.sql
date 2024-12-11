@@ -44,8 +44,19 @@ CREATE TABLE favorite_books (
     PRIMARY KEY (user_id, book_id)
 );
 
+-- Create reviews table
+CREATE TABLE reviews (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    book_id INTEGER,
+    review_text TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_books_title ON books(title);
 CREATE INDEX idx_books_author ON books(author);
 CREATE INDEX idx_books_isbn ON books(isbn);
 CREATE INDEX idx_user_books_status ON user_books(status);
+CREATE INDEX idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX idx_reviews_book_id ON reviews(book_id);

@@ -221,6 +221,71 @@ class User:
             )
             return jsonify({"message": "Error updating password"}), 500
 
+    @staticmethod
+    def delete_user_account(username: str) -> tuple:
+        """Delete a user account and all associated data.
+
+        Args:
+            username: The username of the account to delete
+
+        Returns:
+            tuple: A tuple containing (response, status_code) where:
+                - response: JSON object with success or error message
+                - status_code: HTTP status code
+                    200: Success (account deleted)
+                    404: Not found (user doesn't exist)
+                    500: Server error (database error)
+        """
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+
+                # First, get the user ID
+                cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+                user_data = cursor.fetchone()
+
+                if not user_data:
+                    logger.warning("Attempt to delete non-existent user: %s", username)
+                    return jsonify({"message": f"User '{username}' not found"}), 404
+
+                user_id = user_data[0]
+
+                # Delete all associated data
+                # Delete reviews
+                cursor.execute("DELETE FROM reviews WHERE user_id = ?", (user_id,))
+
+                # Delete from favorite books
+                cursor.execute(
+                    "DELETE FROM favorite_books WHERE user_id = ?", (user_id,)
+                )
+
+                # Delete from personal library
+                cursor.execute("DELETE FROM user_books WHERE user_id = ?", (user_id,))
+
+                # Finally, delete the user
+                cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+                conn.commit()
+
+                logger.info(
+                    "Successfully deleted user account and all associated data for: %s",
+                    username,
+                )
+                return (
+                    jsonify(
+                        {
+                            "message": f"Account and all associated data deleted for {username}"
+                        }
+                    ),
+                    200,
+                )
+
+        except sqlite3.Error as e:
+            logger.error(
+                "Database error deleting user account %s: %s", username, str(e)
+            )
+            return jsonify({"message": "Error deleting account"}), 500
+
 
 def get_library(user):
     """Get all books in the user's library organized by status and favorites
