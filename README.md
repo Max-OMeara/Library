@@ -139,18 +139,23 @@
         "message": "Error updating password"
     }
     ```
+
 ### Add favorite book
+
 **Route:** `/api/add-book-favorite-books`
 
 - **Method:** POST
-- **Purpose:** Route to add a book from personal library onto a user's favorite books list and mark it as read
+- **Purpose:** Route to add a book from personal library onto a user's favorite
+  books list and mark it as read
 - **Request Body:**
+
   ```json
     {
     "username" :"(String): User's chosen username."
     "book_id" :"(Int) Id of book that will be added to favorite's list"
     }
   ```
+
 - **Response Format:** JSON
 - **Success Response:**
   - **Code:** 200
@@ -162,6 +167,7 @@
       "review": "Custom Message"
     }
     ```
+
 - **Error Responses:**
   - **Code:** 400
 
@@ -171,14 +177,13 @@
     }
     ```
 
- - **Code:** 404
+- **Code:** 404
 
   ```json
   {
       "message": "Book with ID {book_id} not found in your personal library"
   }
   ```
-
 
 ## Library Routes
 
@@ -187,7 +192,8 @@
 **Route:** `/api/get-library`
 
 - **Method:** GET
-- **Purpose:** Retrieves all books in a user's library organized by reading status
+- **Purpose:** Retrieves all books in a user's library organized by reading
+  status
 - **Query Parameters:**
   - `username` (required): The username of the library owner
 - **Response Format:** JSON
@@ -376,8 +382,10 @@
 ### Update Status
 
 **Route:** `/api/update-status/<book_id>`
+
 - **Method:** PUT
-- **Purpose:** Updates the reading status of a specific book in the user's library.
+- **Purpose:** Updates the reading status of a specific book in the user's
+  library.
 - **URL Parameters:**
   - `book_id` (required): The ID of the book to update
 - **Response Format:** JSON
@@ -394,6 +402,7 @@
           "author": "F. Scott Fitzgerald",
           "isbn": "9780743273565",
           "status": "Reading"
+      }
     }
 
 
@@ -432,7 +441,8 @@
 **Route:** `/api/get-reviews`
 
 - **Method:** GET
-- **Purpose:** Retrieves all reviews for books in a user's library organized by reading status
+- **Purpose:** Retrieves all reviews for books in a user's library organized by
+  reading status
 - **Query Parameters:**
   - `username` (required): The username of the library owner
 - **Response Format:** JSON
@@ -445,6 +455,7 @@
         "username": "newuser123"
     }
     ```
+
 - **Error Responses:**
   - **Code:** 404
 
@@ -475,6 +486,7 @@
       "review": "Custom Message"
     }
     ```
+
 - **Error Responses:**
   - **Code:** 400
 
@@ -484,7 +496,7 @@
     }
     ```
 
- - **Code:** 404
+- **Code:** 404
 
   ```json
   {
@@ -492,11 +504,10 @@
   }
   ```
 
-   - **Code:** 402
+- **Code:** 402
 
   ```json
   {
       "message": "You have already reviewed this book"
   }
   ```
-
