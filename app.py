@@ -18,7 +18,8 @@ def home():
     return {"message": "Library API is running"}
 
 
-#Health Check Route
+# Health Check Route
+
 
 @app.route("/api/health", methods=["GET"])
 def healthcheck():
@@ -31,12 +32,27 @@ def healthcheck():
     app.logger.info("Health check")
     return jsonify({"status": "healthy"}, 200)
 
+
 # Authentication Routes
 
 
 @app.route("/create-account", methods=["POST"])
 def create_account():
-    """Create a new user account with salted password hash"""
+    """Create a new user account with salted password hash.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The desired username for the new account
+            password (str): The password for the new account
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+                200: Success
+                400: Bad request (missing/invalid data)
+                500: Server error
+    """
     try:
         data = request.get_json()
         if not data:
@@ -58,7 +74,21 @@ def create_account():
 
 @app.route("/login", methods=["POST"])
 def login():
-    """Verify user credentials using hashed password"""
+    """Authenticate user credentials and create a session.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username for authentication
+            password (str): The password for authentication
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a welcome message or error
+            - status_code: HTTP status code
+                200: Success (valid credentials)
+                400: Bad request (missing credentials)
+                401: Unauthorized (invalid credentials)
+    """
     data = request.get_json()
 
     if not data.get("username") or not data.get("password"):
@@ -74,7 +104,23 @@ def login():
 
 @app.route("/update-password", methods=["PUT"])
 def update_password():
-    """Update user password with new salt and hash"""
+    """Update user's password with new salt and hash.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username of the account
+            old_password (str): The current password for verification
+            new_password (str): The new password to set
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+                200: Success (password updated)
+                400: Bad request (missing credentials)
+                401: Unauthorized (invalid credentials)
+                500: Server error
+    """
     data = request.get_json()
 
     if not all(k in data for k in ["username", "old_password", "new_password"]):
@@ -98,7 +144,20 @@ def update_password():
 
 @app.route("/api/get-library", methods=["GET"])
 def get_user_library():
-    """Get the user's library with books organized by status"""
+    """Get the user's library with books organized by status.
+
+    Args:
+        None directly. Expects a query parameter with:
+            username (str): The username of the account
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with the user's library
+            - status_code: HTTP status code
+                200: Success
+                400: Bad request (missing/invalid data)
+                404: Not found (user not found)
+    """
     username = request.args.get("username")
     if not username:
         return jsonify({"message": "Please provide a username"}), 400
@@ -112,7 +171,20 @@ def get_user_library():
 
 @app.route("/api/add-book", methods=["POST"])
 def add_book():
-    """Add a book to the user's library using OpenLibrary API"""
+    """Add a book to the user's library using OpenLibrary API.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username of the account
+            title (str): The title of the book to add
+            author (str): The author of the book to add
+            status (str): The status of the book to add (Want to Read, Reading, Read)
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+    """
     data = request.get_json()
 
     if not data.get("username"):
@@ -215,7 +287,17 @@ def delete_user_review():
 
 @app.route("/api/delete-book/<int:book_id>", methods=["DELETE"])
 def delete_book(book_id):
-    """Delete a book from the user's library"""
+    """Delete a book from the user's library.
+
+    Args:
+        None directly. Expects a query parameter with:
+            username (str): The username of the account
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+    """
     username = request.args.get("username")
     if not username:
         return jsonify({"message": "Please provide a username"}), 400
@@ -229,7 +311,18 @@ def delete_book(book_id):
 
 @app.route("/api/update-status/<int:book_id>", methods=["PUT"])
 def update_book_status(book_id):
-    """Update a book's reading status"""
+    """Update a book's reading status.
+
+    Args:
+        None directly. Expects a JSON request body with:
+            username (str): The username of the account
+            new_status (str): The new status of the book (Want to Read, Reading, Read)
+
+    Returns:
+        tuple: A tuple containing (response, status_code) where:
+            - response: JSON object with a message indicating success or failure
+            - status_code: HTTP status code
+    """
     data = request.get_json()
     username = data.get("username")
     new_status = data.get("status")
