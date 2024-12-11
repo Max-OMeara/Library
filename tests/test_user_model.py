@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from flask import jsonify
 import os
 import sqlite3
+from models.user_model import get_user_by_username
 
 @pytest.fixture
 def sample_review(sample_book):
@@ -111,10 +112,18 @@ def test_check_password(sample_user):
     assert a == True
     assert b == False
 
-# def create_user_account
-# def get_user_bu_username
-# def update_password
-#def get_library(sample_user):
+# endtest_check_password
+
+def test_get_user_by_username(mock_cursor, sample_user):
+    """Tests getting a user by username"""
+    mock_cursor.fetchone.return_value = (1, 'test_user')
+    user = get_user_by_username('test_user')
+    assert user.id == 1
+    assert user.username == 'test_user'
+    assert user.password_hash == 'password_hash'
+    assert user.salt == 'salt'
+# endtest_get_user_by_username
+
 
 
 def test_add_book_personal_library(sample_user, sample_book):
