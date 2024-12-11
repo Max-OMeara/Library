@@ -106,6 +106,18 @@ def test_get_library(sample_user):
     assert len(response.json) == 0
 # endtest_get_library
 
+def test_delete_book_from_library(sample_user, sample_book):
+    """Tests deleting a book from the personal library"""
+    sample_user.library.append(sample_book)
+    response, status_code = delete_book_from_library(sample_user, sample_book)
+    assert status_code == 200
+    assert response == jsonify({"message": "Book deleted from personal library."})
+    assert sample_book not in sample_user.library
+    assert "message" in response
+    assert "book" in response
+    assert response["book"]["title"] == "Animal Farm"
+# endtest_delete_book_from_library
+
     #assert response == jsonify*
 #def add_book_favorite_books
 # def add_book_review
