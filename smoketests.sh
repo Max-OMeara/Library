@@ -174,6 +174,29 @@ if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     exit 1
 fi
 
+# Test Favorite Books
+echo -e "\nTesting favorite books endpoints..."
+
+# Add to Favorites
+echo "Testing add-favorite-books endpoint..."
+ADD_FAVORITE_PAYLOAD="{\"username\": \"$TEST_USER\", \"book_id\": $BOOK_ID}"
+ADD_FAVORITE_RESPONSE=$(make_request "${API_URL}/add-favorite-book" "POST" "$ADD_FAVORITE_PAYLOAD" 200)
+check_json "$ADD_FAVORITE_RESPONSE"
+echo "Add to favorites test passed."
+
+# Verify Book Added to Favorites
+echo "Testing get-library endpoint... (should show book in favorites)"
+LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
+check_json "$LIB_RESPONSE"
+
+FAVORITES_COUNT=$(echo "$LIB_RESPONSE" | jq '.favorites | length')
+if [ "$FAVORITES_COUNT" -eq 1 ]; then
+    echo "Favorites verification passed."
+else
+    echo "Favorites verification failed. Expected 1 favorite, got $FAVORITES_COUNT. Response: $LIB_RESPONSE"
+    exit 1
+fi
+
 # 4. Review Management Tests
 echo -e "\nTesting review management endpoints..."
 
