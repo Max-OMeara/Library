@@ -1,5 +1,14 @@
 # Library API Documentation
 
+## Description
+
+This is a Flask-based Library Management API that allows users to manage their
+personal book collections. Users can create accounts, add books (fetched from
+the OpenLibrary API), organize them by reading status (Want to Read, Reading,
+Read), write reviews, and maintain a favorites list, with all data persisted in
+a SQLite database and the application containerized using Docker for easy
+deployment.
+
 ## Authentication Routes
 
 ### Create Account
