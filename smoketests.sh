@@ -4,7 +4,8 @@ echo "Running smoke tests..."
 
 export $(cat .env | xargs) # Load environment variables
 
-BASE_URL="http://localhost:5000/api"
+BASE_URL="http://localhost:5000" # Auth routes use BASE_URL
+API_URL="$BASE_URL/api" 
 
 ECHO_JSON=false
 
@@ -41,7 +42,7 @@ make_request() {
 }
 
 # Test health-check
-HEALTH_ENDPOINT="$BASE_URL/health"
+HEALTH_ENDPOINT="$API_URL/health"
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_ENDPOINT")
 if [ "$RESPONSE" -eq 200 ]; then
   echo "Health-check endpoint is up."
@@ -58,7 +59,7 @@ check_json "$CREATE_RESPONSE"
 echo "Account creation test passed."
 
 # Test get-library (should be empty initially)
-GET_LIBRARY_ENDPOINT="$BASE_URL/get-library?username=testuser"
+GET_LIBRARY_ENDPOINT="$API_URL/get-library?username=testuser"
 LIB_RESPONSE=$(make_request "$GET_LIBRARY_ENDPOINT" "GET" "" 200)
 check_json "$LIB_RESPONSE"
 
@@ -70,7 +71,7 @@ else
 fi
 
 # Test add-book
-ADD_BOOK_ENDPOINT="$BASE_URL/add-book"
+ADD_BOOK_ENDPOINT="$API_URL/add-book"
 ADD_BOOK_PAYLOAD='{ "username": "testuser", "title": "testtitle", "author": "testauthor" }'
 ADD_BOOK_RESPONSE=$(make_request "$ADD_BOOK_ENDPOINT" "POST" "$ADD_BOOK_PAYLOAD" 201)
 check_json "$ADD_BOOK_RESPONSE"
@@ -88,7 +89,7 @@ else
 fi
 
 # Test delete-book
-DELETE_BOOK_ENDPOINT="$BASE_URL/delete-book/1?username=testuser"
+DELETE_BOOK_ENDPOINT="$API_URL/delete-book/1?username=testuser"
 DELETE_RESPONSE=$(make_request "$DELETE_BOOK_ENDPOINT" "DELETE" "" 200)
 check_json "$DELETE_RESPONSE"
 echo "Delete-book test passed."
