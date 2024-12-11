@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     sqlite3 \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
