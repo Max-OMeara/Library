@@ -73,6 +73,36 @@ def test_set_password(mocker):
     assert user.set_password('1234') is None
 # endtest_set_password
 
+def test_update_password(mocker):
+    """Tests updating a password with a mocked salt"""
+    # Arrange
+    # Mock os.urandom to return 64 bytes of 'x' (0x78)
+    mock_salt = b'x' * 64
+    mocker.patch('os.urandom', return_value=mock_salt)
+
+    user = User(id=1, username='test_user')
+    user.set_password('1234')
+
+    # The salt should be 'x' in hex (78) repeated 64 times
+    expected_salt = '78' * 64
+
+    expected_hash = hashlib.sha512(f"1234{expected_salt}".encode()).hexdigest()
+
+    assert user.salt == expected_salt, "Salt does not match the expected mocked value."
+    assert user.password_hash == expected_hash, "Password hash does not match the expected value."
+
+    # Act
+    user.update_password('12345')
+
+    # The salt should be 'x' in hex (78) repeated 64 times
+    expected_salt = '78' * 64
+
+    expected_hash = hashlib.sha512(f"12345{expected_salt}".encode()).hexdigest()
+
+    assert user.salt == expected_salt, "Salt does not match the expected mocked value."
+    assert user.password_hash == expected_hash, "Password hash does not match the expected value."
+# endtest_update_password
+
 def test_check_password(sample_user):
     """Tests checking a password"""
     a = sample_user.check_password('1234')
@@ -130,7 +160,6 @@ def test_update_status(sample_user, sample_book):
     assert response["book"]["title"] == "Animal Farm"
 # endtest_update_status
 
-    #assert response == jsonify*
 #def add_book_favorite_books
 # def add_book_review
 # def get_reviews
