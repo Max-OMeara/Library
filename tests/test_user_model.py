@@ -9,12 +9,6 @@ import sqlite3
 # Fixtures
 ##################################################
 
-<<<<<<< HEAD
-from models.user_model import User, Review
-from models.user_model import get_user_by_username, add_book_personal_library, add_book_favorite_books, get_library, delete_book_from_library, update_status, add_book_review, get_reviews, delete_review
-from models.book_model import Book
-=======
->>>>>>> 70ea475 (updated tests)
 
 @pytest.fixture
 def sample_user(mocker):
@@ -77,10 +71,6 @@ def mock_db(mocker):
     mocker.patch("models.user_model.sqlite3.connect", return_value=mock_conn)
     return mock_cursor
 
-<<<<<<< HEAD
-    mocker.patch("models.user_model.get_db_connection", mock_get_db_connection)
-=======
->>>>>>> 70ea475 (updated tests)
 
 @pytest.fixture
 def app():
@@ -161,11 +151,9 @@ def test_get_user_by_username(mock_db):
 
     assert user is not None
     assert user.id == 1
-<<<<<<< HEAD
-    assert user.username == 'test_user'
-    assert user.salt == 'salt'
-# endtest_get_user_by_username
-=======
+    assert user.username == "test_user"
+    assert user.salt == "salt"
+    # endtest_get_user_by_username
     assert user.username == "test_user"
     assert user.password_hash == "hashed_password"
     assert user.salt == "salt"
@@ -185,7 +173,6 @@ def test_update_password(sample_user, mock_db, mocker):
     mock_jsonify = mocker.patch("models.user_model.jsonify", side_effect=lambda x: x)
 
     response, status_code = sample_user.update_password("new_password")
->>>>>>> 70ea475 (updated tests)
 
     assert status_code == 200
     assert "Password updated successfully" in response["message"]

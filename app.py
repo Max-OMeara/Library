@@ -9,10 +9,6 @@ from models.user_model import (
     delete_review,
     get_reviews,
     add_book_favorite_books,
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 )
 
 app = Flask(__name__)
